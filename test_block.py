@@ -1,4 +1,6 @@
-from transformer_block import BlockConfig, TransformerBlock
+from models.attention import BlockConfig
+from models.block import TransformerBlock
+
 import torch
 
 cfg = BlockConfig(d_model=128, n_heads=4, mlp_ratio=4, attn_dropout=0.1, resid_dropout=0.1)

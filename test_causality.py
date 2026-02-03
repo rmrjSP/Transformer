@@ -1,4 +1,6 @@
-from transformer_block import BlockConfig, TransformerBlock
+from models.attention import BlockConfig
+from models.block import TransformerBlock
+
 import torch
 
 torch.manual_seed(0)
