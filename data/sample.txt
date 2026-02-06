@@ -1,0 +1,56 @@
+INFO 2026-02-03 10:33:11 service=auth msg="login ok" user_id=123 ip=192.168.1.5
+INFO 2026-02-03 10:33:12 service=auth msg="token issued" user_id=123 ttl=3600
+WARN 2026-02-03 10:34:01 service=auth msg="password attempt failed" user_id=124
+ERROR 2026-02-03 10:35:02 service=db msg="connection timeout" host=10.0.0.5 port=5432
+
+Traceback (most recent call last):
+  File "app.py", line 42, in <module>
+    main()
+  File "app.py", line 18, in main
+    connect_to_db()
+  File "db.py", line 77, in connect_to_db
+    raise TimeoutError("database did not respond")
+TimeoutError: database did not respond
+
+DEBUG 2026-02-03 10:35:05 retrying connection attempt=1
+DEBUG 2026-02-03 10:35:07 retrying connection attempt=2
+ERROR 2026-02-03 10:35:10 service=db msg="max retries exceeded"
+
+HTTP/1.1 500 Internal Server Error
+Content-Type: application/json
+{
+  "error": "DatabaseUnavailable",
+  "message": "Failed to process request",
+  "request_id": "abc123xyz"
+}
+
+User alice@example.com attempted to upload file /var/data/uploads/report_2026-02-03.csv
+Permission denied: errno=13 path="/var/data/uploads/report_2026-02-03.csv"
+
+Config loaded:
+db.host=localhost
+db.port=5432
+db.user=admin
+db.password=********
+cache.enabled=true
+cache.ttl=600
+
+System metrics:
+cpu_usage=87.3%
+memory_used=7123MB
+disk_free=/dev/sda1 12%
+
+ERROR ValueError: invalid literal for int() with base 10: 'abc'
+ERROR KeyError: 'user_id'
+WARN deprecated API called: /v1/login
+
+This is a short paragraph of natural language text.
+The goal is to ensure the tokenizer also sees plain English sentences.
+Transformers learn better when tokenizers see diverse patterns.
+
+Another paragraph:
+Models trained on logs often need to reason about structure,
+timestamps, identifiers, stack traces, and human explanations.
+
+INFO shutdown initiated by signal SIGTERM
+INFO cleanup completed
