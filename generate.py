@@ -13,11 +13,13 @@ def generate(
     max_new_tokens: int,
     temperature: float = 1.0,
     top_k: int = 50,
+    top_p: float = None,
 ) -> torch.LongTensor:
     """
     idx: (B, T) token ids
     returns: (B, T + max_new_tokens)
     """
+
     model.eval()
 
     for _ in range(max_new_tokens):
@@ -27,13 +29,39 @@ def generate(
         # Temperature: higher -> more random, lower -> more deterministic
         next_logits = next_logits / max(temperature, 1e-8)
 
-        # Top-k filtering: keep only k largest logits
-        if top_k is not None and top_k > 0:
-            v, _ = torch.topk(next_logits, k=min(top_k, next_logits.size(-1)))
-            cutoff = v[:, -1].unsqueeze(-1)
-            next_logits = torch.where(next_logits < cutoff, torch.full_like(next_logits, float("-inf")), next_logits)
+        # Repetition penalty
+        repetition_penalty = 1.5  # try 1.05 to 1.2
+        for b in range(idx.size(0)):
+            prev = idx[b].tolist()
+            next_logits[b, prev] /= repetition_penalty
 
-        probs = F.softmax(next_logits, dim=-1)              # (B, vocab)
+        probs = F.softmax(next_logits, dim=-1)  # (B, vocab)
+
+        # Top-k (optional)
+        if top_k is not None and top_k > 0:
+            v, _ = torch.topk(probs, k=min(top_k, probs.size(-1)))
+            cutoff = v[:, -1].unsqueeze(-1)
+            probs = torch.where(probs < cutoff, torch.zeros_like(probs), probs)
+
+
+        # Top-p nucleus (optional)
+        if top_p is not None and 0.0 < top_p < 1.0:
+            sorted_probs, sorted_idx = torch.sort(probs, descending=True, dim=-1)
+            cumsum = torch.cumsum(sorted_probs, dim=-1)
+
+            # mask tokens that push cumulative mass above top_p
+            mask = cumsum > top_p
+            # always keep at least 1 token
+            mask[:, 0] = False
+
+            sorted_probs = torch.where(mask, torch.zeros_like(sorted_probs), sorted_probs)
+
+            # scatter back to original order
+            probs = torch.zeros_like(probs).scatter(-1, sorted_idx, sorted_probs)
+
+        # renormalize
+        probs = probs / probs.sum(dim=-1, keepdim=True)
+
         next_id = torch.multinomial(probs, num_samples=1)   # (B, 1)
 
         idx = torch.cat([idx, next_id], dim=1)              # append token
@@ -54,7 +82,7 @@ def main():
 
     # Load weights if you saved a checkpoint
     try:
-        ckpt = torch.load("checkpoints/latest.pt", map_location="cpu")
+        ckpt = torch.load("checkpoints/latest.pt", map_location="cpu", weights_only=True)
         model.load_state_dict(ckpt["model_state"])
         model.to(device)
         model.eval()
@@ -65,7 +93,7 @@ def main():
     prompt = 'ERROR 2026-02-03 service=db msg="'
     idx = tok.encode_tensor(prompt, device=device).unsqueeze(0)  # (1, T)
 
-    out = generate(model, idx, max_new_tokens=60, temperature=0.9, top_k=50)
+    out = generate(model, idx, max_new_tokens=60, temperature=0.9, top_k=50, top_p=0.9)
     text = tok.decode(out[0].tolist())
 
     print(text)
